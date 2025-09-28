@@ -11,6 +11,8 @@ import time
 from datetime import datetime
 import pytz
 from youtube_feed_fetcher import YouTubeFeedFetcher
+from rss_template_generator import RSSTemplateGenerator
+from notion_integration import NotionIntegration
 from config import Config
 
 # Set up logging
@@ -30,16 +32,59 @@ def run_feed_fetch():
     logger.info("Starting scheduled YouTube RSS feed fetch")
     
     try:
+        # Initialize components
         fetcher = YouTubeFeedFetcher()
-        success = fetcher.run_fetch()
+        rss_generator = RSSTemplateGenerator()
+        notion_integration = NotionIntegration()
+        config = Config()
         
-        if success:
-            logger.info("Feed fetch completed successfully")
+        # Fetch YouTube feeds
+        logger.info("Fetching YouTube feeds...")
+        feeds = fetcher.fetch_all_feeds()
+        
+        if not feeds:
+            logger.error("No feeds were successfully fetched")
+            return False
+        
+        # Save to JSON file
+        success = fetcher.save_feeds_to_file(feeds)
+        if not success:
+            logger.error("Failed to save feeds to JSON file")
+            return False
+        
+        # Generate RSS feed
+        logger.info("Generating RSS feed...")
+        rss_success = rss_generator.save_rss_feed(feeds, config.RSS_OUTPUT_FILE)
+        if rss_success:
+            logger.info(f"RSS feed saved to {config.RSS_OUTPUT_FILE}")
         else:
-            logger.error("Feed fetch failed")
+            logger.warning("Failed to generate RSS feed")
+        
+        # Send to Notion (if configured)
+        if config.NOTION_TOKEN and config.NOTION_DATABASE_ID:
+            logger.info("Sending feeds to Notion...")
+            notion_success = notion_integration.send_feeds_to_notion(feeds)
+            if notion_success:
+                logger.info("Successfully sent feeds to Notion")
+                
+                # Create daily summary
+                summary_success = notion_integration.create_daily_summary_page(feeds)
+                if summary_success:
+                    logger.info("Created daily summary page in Notion")
+            else:
+                logger.warning("Failed to send feeds to Notion")
+        else:
+            logger.info("Notion integration not configured (missing NOTION_TOKEN or NOTION_DATABASE_ID)")
+        
+        # Log summary
+        total_videos = sum(len(feed["videos"]) for feed in feeds)
+        logger.info(f"Successfully processed {len(feeds)} channels with {total_videos} total videos")
+        
+        return True
             
     except Exception as e:
         logger.error(f"Unexpected error during feed fetch: {e}")
+        return False
     
     logger.info("=" * 50)
 
