@@ -7,6 +7,7 @@ A Python application that fetches RSS feeds from YouTube channels and saves them
 - 🎥 Fetch RSS feeds from multiple YouTube channels
 - 📅 Scheduled daily updates (9 AM UTC)
 - 💾 Save feeds to JSON format
+- 🗒️ Publish a clean daily digest directly to Notion
 - ⚙️ Simple configuration via environment variables
 - 📝 Comprehensive logging
 - 🖥️ Designed for local usage
@@ -36,7 +37,7 @@ Copy the example environment file and configure your settings:
 cp env.example .env
 ```
 
-Edit `.env` with your YouTube channel IDs:
+Edit `.env` with your YouTube channel IDs and (optionally) Notion credentials:
 
 ```env
 # YouTube Channel IDs (comma-separated)
@@ -44,6 +45,16 @@ YOUTUBE_CHANNELS=UCBJycsmduvYEL83R_U4JriQ,UCrqM0Ym_NbK1fqeQG2VIohg
 
 # Output file path
 OUTPUT_FILE=feeds.json
+
+# Optional timezone for timestamps
+TIMEZONE=UTC
+
+# Notion (required if you want pages created automatically)
+NOTION_API_KEY=secret_notion_token
+NOTION_DATABASE_ID=your_database_id
+NOTION_PAGE_TITLE_PREFIX=Daily YouTube Feed
+# Optional: if your database has a date property you want populated
+NOTION_DATE_PROPERTY=Date
 ```
 
 ### 3. Finding YouTube Channel IDs
@@ -108,8 +119,16 @@ The application will fetch feeds daily at 9:00 AM UTC and continue running until
 |----------|-------------|---------|
 | `YOUTUBE_CHANNELS` | Comma-separated channel IDs | Required |
 | `OUTPUT_FILE` | JSON output filename | `feeds.json` |
+| `TIMEZONE` | Olson timezone name used for timestamps | `UTC` |
+| `NOTION_API_KEY` | Notion integration secret | Required for Notion |
+| `NOTION_DATABASE_ID` | Target Notion database ID | Required for Notion |
+| `NOTION_PAGE_TITLE_PREFIX` | Prefix for generated page titles | `Daily YouTube Feed` |
+| `NOTION_DATE_PROPERTY` | Name of Notion date property to populate | _empty_ |
 
-**Note**: The application runs on a fixed daily schedule (9 AM UTC) with UTC timestamps.
+**Note**: The application runs on a fixed daily schedule (9 AM UTC). When Notion
+credentials are provided, a new page is created in the configured database with
+the latest videos, including title, author, a summary under 200 words, a video
+preview embed, and a direct link that opens in the YouTube app.
 
 ## Logging
 
