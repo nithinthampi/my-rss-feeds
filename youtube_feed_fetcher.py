@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Dict, Optional
 import pytz
 from config import Config
+from notion_publisher import NotionPublisher
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +20,7 @@ class YouTubeFeedFetcher:
         self.config = Config()
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "YouTube RSS Feed Fetcher/1.0"})
+        self.notion_publisher = NotionPublisher(self.config)
 
     def fetch_channel_feed(self, channel_id: str) -> Optional[Dict]:
         """Fetch RSS feed for a single YouTube channel."""
@@ -144,10 +146,20 @@ class YouTubeFeedFetcher:
 
         success = self.save_feeds_to_file(feeds)
 
+        notion_success = True
+        if self.notion_publisher.is_configured:
+            notion_success = self.notion_publisher.publish_feeds(feeds)
+            if notion_success:
+                logger.info("Feeds were sent to Notion successfully")
+            else:
+                logger.error("Failed to publish feeds to Notion")
+        else:
+            logger.info("Notion integration not configured. Skipping Notion publish.")
+
         if success:
             total_videos = sum(len(feed["videos"]) for feed in feeds)
             logger.info(
                 f"Successfully fetched {len(feeds)} channels with {total_videos} total videos"
             )
 
-        return success
+        return success and notion_success
